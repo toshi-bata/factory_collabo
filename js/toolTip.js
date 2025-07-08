@@ -1,4 +1,5 @@
-class toolTipOperator {
+import * as Communicator from "./hoops-web-viewer.mjs";
+export class toolTipOperator {
     constructor(viewer, robotSystems, resources, socket) {
         this._viewer = viewer;
         this._robotSystems = robotSystems;
@@ -26,7 +27,7 @@ class toolTipOperator {
                         var selectionPosition = selectionItem.getPosition();
                         if (selectionPosition) {
                             var markupItem = new textBoxMarkup(_this._viewer, _this._resources, selectionPosition, info);
-                            _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem);
+                            _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem, _this._viewer.view);
 
                             if (_this._isSharedCamera) {
                                 _this._socket.emit('toolTip', parentId, selectionPosition, info);
@@ -58,8 +59,7 @@ class toolTipOperator {
     _hideMarkup() {
         var _this = this;
         if (_this._markupHandle != "") {
-            var MM = _this._viewer.markupManager;
-            _this._viewer.markupManager.unregisterMarkup(_this._markupHandle);
+            _this._viewer.markupManager.unregisterMarkup(_this._markupHandle, _this._viewer.view);
             $("#piechart" + _this._robotId).hide();
             if (_this._isSharedCamera) {
                 _this._socket.emit('toolTip', _this._currentNode, undefined, undefined);
@@ -100,13 +100,13 @@ function textBoxMarkup(viewer, resources, point, info) {
     this._resources = resources;
     this._statusRes = {IDLE: this._resources[2], RUN: this._resources[3], STOP: this._resources[4], ALARM: this._resources[5], SHUT_DOWN: this._resources[6]};
     this._viewer = viewer;
-    this._frame = new Communicator.Markup.Shape.Rectangle();
+    this._frame = new Communicator.Markup.Shapes.Rectangle();
     this._frame.setFillOpacity(1);
     this._frame.setFillColor(new Communicator.Color(255, 255, 198));
     this._frame.setStrokeColor(new Communicator.Color(255, 255, 198));
-    this._line1 = new Communicator.Markup.Shape.Text();
-    this._line2 = new Communicator.Markup.Shape.Text();
-    this._line3 = new Communicator.Markup.Shape.Text();
+    this._line1 = new Communicator.Markup.Shapes.Text();
+    this._line2 = new Communicator.Markup.Shapes.Text();
+    this._line3 = new Communicator.Markup.Shapes.Text();
     this._line1.setText(this._resources[7] + ": " + info.instanceName);
     var st = this._statusRes[info.status];
     if (info.reason != "")

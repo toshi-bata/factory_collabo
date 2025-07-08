@@ -1,4 +1,5 @@
-function robotInstance(viewer, instanceName, robotName, id, targetCnt, offset, nodeId) {
+import * as Communicator from "./hoops-web-viewer.mjs";
+export function robotInstance(viewer, instanceName, robotName, id, targetCnt, offset, nodeId) {
     this._viewer = viewer;
     this.instanceName = instanceName;
     this._robotName = robotName;
@@ -37,7 +38,7 @@ robotInstance.prototype._findNodeIds = function (parentNode, offset) {
 
             var rotatMatrix = new Communicator.Matrix();
             if (offset.a != undefined) {
-                rotatMatrix = new Communicator.Matrix.createFromOffAxisRotation(new Communicator.Point3(0, 0, 1), offset.a);
+                rotatMatrix = Communicator.Matrix.createFromOffAxisRotation(new Communicator.Point3(0, 0, 1), offset.a);
             }
 
             nodeMatrix = Communicator.Matrix.multiply(nodeMatrix, rotatMatrix)
@@ -59,7 +60,7 @@ robotInstance.prototype.reset = function (matArr) {
     var _this = this;
 
     for (var i = 0; i < _this._targetCnt; i++) {
-        var matrix = new Communicator.Matrix.createFromArray(matArr[i]);
+        var matrix = Communicator.Matrix.createFromArray(matArr[i]);
         _this._viewer.model.setNodeMatrix(_this._robotParts[i], Communicator.Matrix.multiply(matrix, _this._nodeMatrixes[i]));
     }
     _this.ONum = "";
@@ -72,7 +73,7 @@ robotInstance.prototype.moveRobot = function(matArr, ONum) {
     _this.ONum = ONum;
 
     for (var i = 0; i < _this._targetCnt; i++) {
-        var matrix = new Communicator.Matrix.createFromArray(matArr[i]);
+        var matrix = Communicator.Matrix.createFromArray(matArr[i]);
         _this._viewer.model.setNodeMatrix(_this._robotParts[i], Communicator.Matrix.multiply(matrix, _this._nodeMatrixes[i]));
     }
 }

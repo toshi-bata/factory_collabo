@@ -1,4 +1,5 @@
-class drawingOperator {
+import * as Communicator from "./hoops-web-viewer.mjs";
+export class drawingOperator {
     constructor(viewer, owner) {
         this._viewer = viewer;
         this._owner = owner;
@@ -79,7 +80,7 @@ class drawingOperator {
                         _this._markupItemLocalPos.setPosition(drawingPoint);
                         _this._markupItemLocalDir.setPosition(drawingPoint);
                     }
-                    _this._viewer.markupManager.refreshMarkup();
+                    _this._viewer.markupManager.refreshMarkup(_this._viewer.view);
                 }
             } else if ("cameraMarkupDir" == _this._activeMarkup.getClassName()) {
                 _this._rotateCamera(screenPoint);
@@ -114,7 +115,7 @@ class drawingOperator {
         else {
             _this._markupItemLocalDir.setAngle(newAngle);
         }
-        _this._viewer.markupManager.refreshMarkup();
+        _this._viewer.markupManager.refreshMarkup(_this._viewer.view);
     }
 
     onMouseMove(event) {
@@ -149,7 +150,7 @@ class drawingOperator {
         var anchor = Communicator.Point3.zero();
         var normal = new Communicator.Point3(0, 0, 1);
         var anchorPlane = Communicator.Plane.createFromPointAndNormal(anchor, normal);
-        var raycast = this._viewer.getView().raycastFromPoint(screenPoint);
+        var raycast = this._viewer.view.raycastFromPoint(screenPoint);
         var intersectionPoint = Communicator.Point3.zero();
         
         if (anchorPlane.intersectsRay(raycast, intersectionPoint)) {
@@ -202,7 +203,7 @@ class drawingOperator {
             markupItemDir.setAngle(angle);
         }
 
-        _this._viewer.markupManager.refreshMarkup();
+        _this._viewer.markupManager.refreshMarkup(_this._viewer.view);
     }
 
     _createCameraPosMarkup(drawingPoint) {
@@ -214,7 +215,7 @@ class drawingOperator {
             r *= 1.25;
         }
         var markupItem = new cameraMarkupPos(_this._viewer, drawingPoint, r);
-        var guid = _this._viewer.markupManager.registerMarkup(markupItem);
+        var guid = _this._viewer.markupManager.registerMarkup(markupItem, _this._viewer.view);
 
         if (_this._isSharedCamera) {
             _this._markupItemPos = markupItem;
@@ -238,7 +239,7 @@ class drawingOperator {
             r *= 1.25;
         }
         var markupItem = new cameraMarkupDir(_this._viewer, drawingPoint, angle, r);
-        var guid = _this._viewer.markupManager.registerMarkup(markupItem);
+        var guid = _this._viewer.markupManager.registerMarkup(markupItem, _this._viewer.view);
 
         if (_this._isSharedCamera) {
             _this._markupItemDir = markupItem;
@@ -252,7 +253,7 @@ class drawingOperator {
     _selectMarkup(screenPoint) {
         var _this = this;
 
-        var markup = this._viewer.markupManager.pickMarkupItem(screenPoint);
+        var markup = this._viewer.markupManager.pickMarkupItem(screenPoint, _this._viewer.view);
 
         return markup;
     }
@@ -264,10 +265,10 @@ class drawingOperator {
 
         if (_this._isSharedCamera) {
             if (undefined != _this._markupGuidLocalPos) {
-                _this._viewer.markupManager.unregisterMarkup(_this._markupGuidLocalPos);
-                _this._viewer.markupManager.unregisterMarkup(_this._markupGuidLocalDir);
-                _this._viewer.markupManager.removeMarkupElement(_this._markupGuidLocalPos);
-                _this._viewer.markupManager.removeMarkupElement(_this._markupGuidLocalDir);
+                _this._viewer.markupManager.unregisterMarkup(_this._markupGuidLocalPos, _this._viewer.view);
+                _this._viewer.markupManager.unregisterMarkup(_this._markupGuidLocalDir, _this._viewer.view);
+                _this._viewer.markupManager.removeMarkupElement(_this._markupGuidLocalPos, _this._viewer.view);
+                _this._viewer.markupManager.removeMarkupElement(_this._markupGuidLocalDir, _this._viewer.view);
 
                 _this._markupItemLocalPos = undefined;
                 _this._markupItemLocalDir = undefined;
@@ -291,9 +292,9 @@ class propertyMarkup {
         this._text_val1 = "Name: " + text1;
         this._text_val2 = "Type: " + text2;
 
-        this._rectangle = new Communicator.Markup.Shape.Rectangle();
-        this._text1 = new Communicator.Markup.Shape.Text();
-        this._text2 = new Communicator.Markup.Shape.Text();
+        this._rectangle = new Communicator.Markup.Shapes.Rectangle();
+        this._text1 = new Communicator.Markup.Shapes.Text();
+        this._text2 = new Communicator.Markup.Shapes.Text();
 
         this._rectangle.setFillColor (new Communicator.Color(255, 128, 0));
         this._rectangle.setStrokeColor (new Communicator.Color(255, 128, 0));
@@ -331,12 +332,13 @@ class propertyMarkup {
     }
 }
 
-class cameraMarkupPos {
+class cameraMarkupPos extends Communicator.Markup.MarkupItem {
     constructor(viewer, drawingPoint, r) {
+        super();
         this._viewer = viewer;
 
         this._drawingPoint = drawingPoint.copy();
-        this._circle = new Communicator.Markup.Shape.Circle();
+        this._circle = new Communicator.Markup.Shapes.Circle();
 
         this._circle.setStrokeColor(new Communicator.Color(0, 128, 255));
         this._circle.setFillOpacity(1);
@@ -390,12 +392,13 @@ class cameraMarkupPos {
     }
 };
 
-class cameraMarkupDir {
+class cameraMarkupDir extends Communicator.Markup.MarkupItem {
     constructor(viewer, drawingPoint, angle, r) {
+        super();
         this._viewer = viewer;
         this._drawingPoint = drawingPoint.copy();
         this._angle = angle;
-        this._polygon = new Communicator.Markup.Shape.Polygon();
+        this._polygon = new Communicator.Markup.Shapes.Polygon();
 
         this._polygon.setStrokeColor(new Communicator.Color(0, 128, 255));
         this._polygon.setStrokeWidth(1);
@@ -423,7 +426,7 @@ class cameraMarkupDir {
 
         // rotate matrix
         var vZ = new Communicator.Point3(0, 0, 1);
-        var matrixR = new Communicator.Matrix.createFromOffAxisRotation(vZ, _this._angle);
+        var matrixR = Communicator.Matrix.createFromOffAxisRotation(vZ, _this._angle);
     
         // add points to polygon
         _this._polygon.clearPoints();

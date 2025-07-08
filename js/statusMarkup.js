@@ -1,9 +1,11 @@
-class statusMarkup {
+import * as Communicator from "./hoops-web-viewer.mjs";
+export class statusMarkup extends Communicator.Markup.MarkupItem {
     constructor(viewer, drawingPoint) {
+        super();
         this._viewer = viewer;
         this._drawingPoint = drawingPoint.copy();
 
-        this._circle = new Communicator.Markup.Shape.Circle();
+        this._circle = new Communicator.Markup.Shapes.Circle();
         this._circle.setStrokeColor(new Communicator.Color(0, 255, 0));
         this._circle.setFillOpacity(0.5);
         this._circle.setFillColor(new Communicator.Color(0, 255, 0));

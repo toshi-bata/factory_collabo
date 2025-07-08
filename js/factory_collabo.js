@@ -1,4 +1,11 @@
-function robotViewer(language) {
+import * as Communicator from "./hoops-web-viewer.mjs";
+import { createViewer } from "./create_viewer.js"
+import { customWalkOperator } from "./customWalkOperator.js"
+import { statusMarkup } from "./statusMarkup.js"
+import { robotInstance } from "./robotInstance.js"
+import { drawingOperator } from "./drawingOperator.js"
+import { toolTipOperator } from "./toolTip.js"
+export function robotViewer(language) {
     this._language = language;
     this._viewer;
     this._robotSystems = [];
@@ -158,17 +165,17 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
 
             if (undefined != sharedCamera) {
                 var camObj = JSON.parse(sharedCamera);
-                _this._sharedCamera = Communicator.Camera.construct(camObj);
+                _this._sharedCamera = Communicator.Camera.fromJson(camObj);
             }
         });
 
         _this._socket.on('cameraChange', function (camera) {
             var camObj = JSON.parse(camera);
-            _this._sharedCamera = Communicator.Camera.construct(camObj);
+            _this._sharedCamera = Communicator.Camera.fromJson(camObj);
 
             if (_this._isSharedCamera) {
                 _this._viewer.unsetCallbacks({ camera: cameraFunc });
-                _this._viewer.getView().setCamera(_this._sharedCamera);
+                _this._viewer.view.setCamera(_this._sharedCamera);
                 _this._viewer.setCallbacks({ camera: cameraFunc });
             }
 
@@ -189,10 +196,10 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
         _this._socket.on('selectionChange', function (selection) {
             _this._viewer.unsetCallbacks({ selection: selectionChanged });
             if (selection._nodeId != null) {
-                _this._viewer.getSelectionManager().selectNode(selection._nodeId);
+                _this._viewer.selectionManager.selectNode(selection._nodeId);
             }
             else {
-                _this._viewer.getSelectionManager().clear();
+                _this._viewer.selectionManager.clear();
             }
             _this._viewer.setCallbacks({ selection: selectionChanged });
         });
@@ -203,7 +210,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                     _this._viewer.model.setNodesHighlighted([nodeId], true);
 
                     var markupItem = new textBoxMarkup(_this._viewer, _this._resources, position, info);
-                    _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem);
+                    _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem, _this._viewer.view);
                     _this._markupId = info.id;
                 }
                 else {
@@ -212,7 +219,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                     }
 
                     if (_this._markupHandle != "") {
-                        _this._viewer.markupManager.unregisterMarkup(_this._markupHandle);
+                        _this._viewer.markupManager.unregisterMarkup(_this._markupHandle, _this._viewer.view);
                         $("#piechart" + _this._markupId).hide();
                         _this._markupHandle = ""
                     }
@@ -290,7 +297,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                     _this._robotSystems[i].isStatusUpdated = true;
                 }
 
-                _this._viewer2D.markupManager.refreshMarkup();
+                _this._viewer2D.markupManager.refreshMarkup(_this._viewer2D.view);
 
             }
         });
@@ -301,9 +308,10 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
 
             var markupViewObj = JSON.parse(markupView);
             _this._viewer.unsetCallbacks({ viewCreated: viewCreated });
+            _this._viewer.unsetCallbacks({ camera: cameraFunc });
             _this._viewer.markupManager.loadMarkupData({ views: [markupViewObj] }).then(function (ret) {
-                _this._viewer.markupManager.activateMarkupView(markupViewObj.uniqueId);
-                _this._viewer.markupManager.refreshMarkup();
+                _this._viewer.markupManager.activateMarkupViewWithPromise(markupViewObj.uniqueId, _this._viewer.view, 0);
+                _this._viewer.markupManager.refreshMarkup(_this._viewer.view);
                 _this._viewer.setCallbacks({ viewCreated: viewCreated });
             });
         });
@@ -332,10 +340,11 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                         _this._viewer.markupManager.getActiveMarkupView().removeMarkup(markupItems[ind]);
                     }
                     _this._viewer.markupManager.getActiveMarkupView().addMarkupItem(newMarkup);
-                    _this._viewer.markupManager.refreshMarkup();
+                    _this._viewer.markupManager.refreshMarkup(_this._viewer.view);
                 }
             }
             _this._viewer.setCallbacks({ redlineCreated: newRedlineCallback, });
+            _this._viewer.setCallbacks({ camera: cameraFunc });
         });
 
         function ClassForString(className) {// helper function for creating redline programaticlly
@@ -361,9 +370,9 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
 
                 _this._viewer2D.setCallbacks({
                     sceneReady: function () {
-                        var cameraString = '{"position":{"x":14953.727588117312,"y":23882.347588947476,"z":226514.8907474594},"target":{"x":14953.727588117312,"y":23882.347588947476,"z":5434.78662109375},"up":{"x":0,"y":1,"z":0},"width":221080.10412636565,"height":221080.10412636565,"projection":0,"nearLimit":0.01,"className":"Communicator.Camera"}'
+                        var cameraString = '{"position":{"x":14953.727588117312,"y":23882.347588947476,"z":226514.8907474594},"target":{"x":14953.727588117312,"y":23882.347588947476,"z":5434.78662109375},"up":{"x":0,"y":1,"z":0},"width":221080.10412636565,"height":221080.10412636565,"projection":1,"nearLimit":0.01,"className":"Communicator.Camera"}'
                         var json = JSON.parse(cameraString);
-                        var camera = new Communicator.Camera.construct(json);
+                        var camera = Communicator.Camera.fromJson(json);
                         _this._viewer2D.view.setCamera(camera);
 
                         var camera3D = _this._viewer.view.getCamera();
@@ -380,7 +389,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                             var markupItem = new statusMarkup(_this._viewer2D, pos);
                             _this._statusMarkUpArr.push(markupItem);
 
-                            _this._viewer2D.markupManager.registerMarkup(_this._statusMarkUpArr[i]);
+                            _this._viewer2D.markupManager.registerMarkup(_this._statusMarkUpArr[i], _this._viewer2D.view);
                         }
                     },
                     modelStructureReady: function () {
@@ -412,10 +421,10 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
             _this._viewer.view.setBackgroundColor(new Communicator.Color(255, 255, 255), new Communicator.Color(192, 192, 192));
 
             // Set selection disable
-            _this._viewer.getSelectionManager().setHighlightFaceElementSelection(false);
-            _this._viewer.getSelectionManager().setHighlightLineElementSelection(false);
+            _this._viewer.selectionManager.setHighlightFaceElementSelection(false);
+            _this._viewer.selectionManager.setHighlightLineElementSelection(false);
 
-            _this._viewer.getSelectionManager().setNodeSelectionColor(new Communicator.Color(128, 255, 255));
+            _this._viewer.selectionManager.setNodeSelectionColor(new Communicator.Color(128, 255, 255));
 
             // View
             // Set camera
@@ -533,7 +542,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                 });
 
                 // load factory
-                var root = _this._viewer.model.getRootNode();
+                var root = _this._viewer.model.getAbsoluteRootNode();
                 var nodeId = model.createNode(root, "factory");
                 // const startTime = performance.now();
                 model.loadSubtreeFromModel(nodeId, "Factory_Without_Moving_Robots_Op").then(function() {
@@ -545,7 +554,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
 
         function selectionFunc(event) {
             if (_this._markupHandle != "") {
-                _this._viewer.markupManager.unregisterMarkup(_this._markupHandle);
+                _this._viewer.markupManager.unregisterMarkup(_this._markupHandle, _this._viewer.view);
                 $("#piechart" + _this._markupId).hide();
                 _this._markupHandle = ""
             }
@@ -570,7 +579,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
                         }
                         if (_this._markupHandle == "") {
                             var markupItem = new textBoxMarkup(_this._viewer, _this._resources, position, info);
-                            _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem);
+                            _this._markupHandle = _this._viewer.markupManager.registerMarkup(markupItem, _this._viewer.view);
                             _this._markupId = info.id;
                         }
                     }
@@ -603,7 +612,7 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
             }
 
             if (_this._isSharedCamera) {
-                _this._socket.emit('cameraChange', JSON.stringify(camera.forJson()));
+                _this._socket.emit('cameraChange', JSON.stringify(camera.toJson()));
                 _this._sharedCamera = camera;
             }
         }
@@ -615,14 +624,14 @@ robotViewer.prototype._createViewer = function (viewerMode, reverseProxy) {
         function viewCreated(view) {
             if (_this._isSharedCamera) {
                 if (view.getMarkup().length >= 1) {
-                    _this._socket.emit('viewCreated', JSON.stringify(view.forJson()));
+                    _this._socket.emit('viewCreated', JSON.stringify(view.toJson()));
                 }
             }
         }
 
         function newRedlineCallback(redlineItem) {
             if (_this._isSharedCamera) {
-                var view = _this._viewer.markupManager.getActiveMarkupView();
+                var view = _this._viewer.markupManager.getActiveMarkupView(_this._viewer.view);
                 if (view.getMarkup().length > 1) {
                     var className = redlineItem.getClassName();
                     _this._socket.emit('handleRedline', JSON.stringify(redlineItem.toJson()), className, false);
@@ -746,8 +755,8 @@ robotViewer.prototype._initEvent = function () {
             switch (command) {
                 case 'home': {
                     // Set default camera
-                    var json = JSON.parse('{"position":{"x":17659.919348039737,"y":52362.37644771221,"z":1352.0856142151429},"target":{"x":27555.80822332009,"y":51834.791296864605,"z":314.14414225844394},"up":{"x":0.10401986316290744,"y":-0.005545670115095642,"z":0.9945597586925305},"width":9964.149755794933,"height":9964.149755794933,"projection":1,"nearLimit":0.01,"className":"Communicator.Camera"}');
-                    var camera = new Communicator.Camera.construct(json);
+                    var json = JSON.parse('{"position":{"x":17659.919348039737,"y":52362.37644771221,"z":1352.0856142151429},"target":{"x":27555.80822332009,"y":51834.791296864605,"z":314.14414225844394},"up":{"x":0.10401986316290744,"y":-0.005545670115095642,"z":0.9945597586925305},"width":9964.149755794933,"height":9964.149755794933,"projection":0,"nearLimit":0.01,"className":"Communicator.Camera"}');
+                    var camera = Communicator.Camera.fromJson(json);
                     _this._viewer.view.setCamera(camera);
                 }
                     break;
@@ -767,7 +776,7 @@ robotViewer.prototype._initEvent = function () {
                         $(this).data("on", false).css("background-color", "white");
                     }
                     else {
-                        _this._viewer.getView().setCamera(_this._sharedCamera);
+                        _this._viewer.view.setCamera(_this._sharedCamera);
 
                         _this._isSharedCamera = true;
                         _this._drawingOp.changeShared(_this._isSharedCamera);
@@ -829,7 +838,7 @@ robotViewer.prototype._createRobotSystem = function (instanceName, robotName, ta
     var _this = this;
     return new Promise(function (resolve, reject) {
         var model = _this._viewer.model;
-        var root = model.getRootNode();
+        var root = model.getAbsoluteRootNode();
         var nodeName = "robot_system_" + _this._robotSystems.length;
         var nodeId = model.createNode(root, nodeName);
         model.loadSubtreeFromModel(nodeId, robotName).then(function () {
@@ -924,10 +933,10 @@ robotViewer.prototype.rotate3dCamera = function (rotateAngle) {
 
     // rotate matrix
     var vZ = new Communicator.Point3(0, 0, 1);
-    var matrixR = new Communicator.Matrix.createFromOffAxisRotation(vZ, rotateAngle);
+    var matrixR = Communicator.Matrix.createFromOffAxisRotation(vZ, rotateAngle);
 
     // rotate target
-    var originToTarget = new Communicator.Point3.subtract(target, position);
+    var originToTarget = Communicator.Point3.subtract(target, position);
     var newTarget = Communicator.Point3.zero();
     matrixR.transform(originToTarget, newTarget);
     newTarget.add(position);
